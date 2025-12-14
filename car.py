@@ -30,9 +30,11 @@ class Car:
         self.state.heading = self.spawn.heading_rad
         self.state.speed = 0.0
 
-    def step(self, dt: float, keys, inputs : dict = None) -> None:
+    def step(self, dt: float, keys=None, inputs : dict = None) -> None:
         # Inputs (WASD)
         if inputs is None:
+            if keys is None:
+                raise ValueError("keys must be provided when inputs is None")
             throttle = 1.0 if keys[pygame.K_w] else 0.0
             brake = 1.0 if keys[pygame.K_s] else 0.0
             steer_left = 1.0 if keys[pygame.K_a] else 0.0
