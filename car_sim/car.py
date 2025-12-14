@@ -30,13 +30,18 @@ class Car:
         self.state.heading = self.spawn.heading_rad
         self.state.speed = 0.0
 
-    def step(self, dt: float, keys) -> None:
+    def step(self, dt: float, keys, inputs : dict = None) -> None:
         # Inputs (WASD)
-        throttle = 1.0 if keys[pygame.K_w] else 0.0
-        brake = 1.0 if keys[pygame.K_s] else 0.0
-        steer_left = 1.0 if keys[pygame.K_a] else 0.0
-        steer_right = 1.0 if keys[pygame.K_d] else 0.0
-        steer = steer_right - steer_left  # -1..+1
+        if inputs is None:
+            throttle = 1.0 if keys[pygame.K_w] else 0.0
+            brake = 1.0 if keys[pygame.K_s] else 0.0
+            steer_left = 1.0 if keys[pygame.K_a] else 0.0
+            steer_right = 1.0 if keys[pygame.K_d] else 0.0
+            steer = steer_right - steer_left  # -1..+1
+        else:
+            throttle = float(clamp(inputs.get("throttle", 0.0), 0.0, 1.0))
+            brake = float(clamp(inputs.get("brake", 0.0), 0.0, 1.0))
+            steer = float(clamp(inputs.get("steer", 0.0), -1.0, 1.0))
 
         # Longitudinal dynamics
         if throttle > 0:
