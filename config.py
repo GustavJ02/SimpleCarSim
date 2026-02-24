@@ -30,7 +30,7 @@ class CarConfig:
     max_speed: float = 420.0
     accel: float = 600.0
     brake: float = 900.0
-    friction: float = 420.0
+    friction: float = 210.0
     steer_rate: float = 2.6                 # rad/s at full steer
     steer_speed_factor: float = 0.004       # steering scales with |speed|
     reverse_speed_factor: float = 0.35      # reverse max speed = max_speed * factor
@@ -58,9 +58,18 @@ class SpawnConfig:
 
 
 @dataclass(frozen=True)
+class RayConfig:
+    n_rays: int = 9
+    fov_deg: int = 180
+    max_dist: int = 350
+    step: int = 6
+
+
+@dataclass(frozen=True)
 class GameConfig:
     screen: ScreenConfig = ScreenConfig()
     colors: ColorConfig = ColorConfig()
     car: CarConfig = CarConfig()
     track: TrackConfig = TrackConfig()
     spawn: SpawnConfig = SpawnConfig()
+    rays: RayConfig = RayConfig()
