@@ -22,7 +22,18 @@ class RLAgent:
         self.runs = []
 
         self.model_path = "rl_agent_model.keras"
+        self._configure_gpu_memory_growth()
         self.model = self.build_or_load_model()
+
+    @staticmethod
+    def _configure_gpu_memory_growth():
+        """Avoid TensorFlow grabbing all GPU memory up-front."""
+        for gpu in tf.config.list_physical_devices("GPU"):
+            try:
+                tf.config.experimental.set_memory_growth(gpu, True)
+            except RuntimeError:
+                # Memory growth has to be configured before GPU initialization.
+                pass
 
     def build_or_load_model(self):
         if os.path.exists(self.model_path):
@@ -35,8 +46,8 @@ class RLAgent:
         # Simple feedforward network
         model = tf.keras.Sequential([
             tf.keras.layers.Input(shape=(self.game.cfg.rays.n_rays + 1,)),  # ray distances + speed
-            tf.keras.layers.Dense(128, activation='relu'),
-            tf.keras.layers.Dense(128, activation='relu'),
+            tf.keras.layers.Dense(64, activation='relu'),
+            tf.keras.layers.Dense(64, activation='relu'),
             tf.keras.layers.Dense(3, activation='linear')  # throttle, brake, steer
         ])
         model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.001), loss='mse')
@@ -101,8 +112,9 @@ class RLAgent:
         done = events.get("crash") or events.get("quit")
         # Store transition
         if self.last_obs is not None and self.last_action is not None:
+            state_input = np.asarray(self.last_obs["ray_distances"] + [self.last_obs["speed"]], dtype=np.float32)
             self.replay_buffer.append(
-                (self.last_obs, self.last_action, reward, observation, done)
+                (state_input, self.last_action, reward)
             )
 
         # Train model if enough samples
@@ -136,9 +148,7 @@ class RLAgent:
         states = []
         targets = []
 
-        for state_obs, action, reward, next_obs, done in batch:
-            # Prepare input vector for model
-            state_input = np.array(state_obs["ray_distances"] + [state_obs["speed"]])
+        for state_input, action, reward in batch:
             # Target is the action taken, adjusted by reward
             target = np.array([
                 clamp(action["throttle"] + reward * 0.01, 0, 1),
