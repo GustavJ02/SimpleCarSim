@@ -13,7 +13,7 @@ def clamp(x: float, lo: float, hi: float) -> float:
     return lo if x < lo else hi if x > hi else x
 
 class RLAgent:
-    def __init__(self, game: Game, buffer_size=10000, batch_size=64):
+    def __init__(self, game: Game, buffer_size=10000, batch_size=256):
         self.game = game
         self.replay_buffer = deque(maxlen=buffer_size)
         self.batch_size = batch_size
@@ -54,6 +54,12 @@ class RLAgent:
         return model
 
     def get_inputs(self, observation):
+        # Normalize ray distances and speed
+        ray_max = self.game.cfg.rays.max_dist
+        speed_max = self.game.cfg.car.max_speed
+        norm_ray_distances = [d / ray_max for d in observation["ray_distances"]]
+        norm_speed = observation["speed"] / speed_max
+
         """
         Given the current observation, return a dict with keys:
         'throttle', 'brake', 'steer'
@@ -67,7 +73,7 @@ class RLAgent:
                 "steer": np.random.uniform(-1, 1),
             }
         else:
-            prediction = self.model.predict(np.array([observation["ray_distances"] + [observation["speed"]]]), verbose=0)
+            prediction = self.model.predict(np.array([norm_ray_distances + [norm_speed]]), verbose=0)
             action = {
                 "throttle": clamp(prediction[0][0], 0, 1),
                 "brake": clamp(prediction[0][1], 0, 1),
@@ -107,12 +113,17 @@ class RLAgent:
         if observation["speed"] == 0:
             reward += -10  # no reward for being stationary
         if observation["speed"] > 0:
-            reward += 10  # no reward for being stationary
+            reward += observation["speed"] * 0.1  # reward for forward motion
 
         done = events.get("crash") or events.get("quit")
         # Store transition
         if self.last_obs is not None and self.last_action is not None:
-            state_input = np.asarray(self.last_obs["ray_distances"] + [self.last_obs["speed"]], dtype=np.float32)
+            # Normalize ray distances and speed for replay buffer
+            ray_max = self.game.cfg.rays.max_dist
+            speed_max = self.game.cfg.car.max_speed
+            norm_ray_distances = [d / ray_max for d in self.last_obs["ray_distances"]]
+            norm_speed = self.last_obs["speed"] / speed_max
+            state_input = np.asarray(norm_ray_distances + [norm_speed], dtype=np.float32)
             self.replay_buffer.append(
                 (state_input, self.last_action, reward)
             )
@@ -144,6 +155,7 @@ class RLAgent:
         print(f"Runs saved to rl_agent_runs.csv")
 
     def train_model(self):
+        print("Training model", end="\r", flush=True)
         batch = random.sample(self.replay_buffer, self.batch_size)
         states = []
         targets = []
@@ -161,3 +173,4 @@ class RLAgent:
         states = np.array(states)
         targets = np.array(targets)
         self.model.fit(states, targets, epochs=1, verbose=0)
+        print(" "* 20, end="\r", flush=True)
