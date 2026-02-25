@@ -23,6 +23,7 @@ def main():
     game = Game(GameConfig())
     driver = RLAgent(game)
     game.run(input_obj=driver)
+    #game.run()
 
 
 if __name__ == "__main__":

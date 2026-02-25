@@ -138,8 +138,9 @@ class Game:
         self.reset()
         self.running = True
         while self.running:
-            obs, events = self.step(input_obj.get_inputs)
-            input_obj.feed_back(events, obs)
+            obs, events = self.step(input_obj.get_inputs if input_obj is not None else None)
+            if input_obj is not None:
+                input_obj.feed_back(events, obs)
             if events["quit"]:
                 self.running = False
             if events["reset"]:

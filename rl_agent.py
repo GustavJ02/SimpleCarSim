@@ -51,7 +51,7 @@ class RLAgent:
         epsilon = 0.1
         if np.random.rand() < epsilon:
             action = {
-                "throttle": np.random.uniform(0, 1),
+                "throttle": np.random.uniform(0.9, 1),
                 "brake": np.random.uniform(0, 0.3),
                 "steer": np.random.uniform(-1, 1),
             }
@@ -62,6 +62,10 @@ class RLAgent:
                 "brake": clamp(prediction[0][1], 0, 1),
                 "steer": clamp(prediction[0][2], -1, 1),
             }
+
+        # Prevent throttle if speed is negative (reverse)
+        if observation["speed"] < 0:
+            action["brake"] = 0
 
         self.last_obs = observation
         self.last_action = action
@@ -87,8 +91,12 @@ class RLAgent:
             reward -= 100  # Penalty for crashing
 
         # Penalize or zero reward for backwards driving
-        if observation["speed"] <= 0:
-            reward = 0  # or: reward -= 10
+        if observation["speed"] < 0:
+            reward += -50  # stronger penalty for reverse
+        if observation["speed"] == 0:
+            reward += -10  # no reward for being stationary
+        if observation["speed"] > 0:
+            reward += 10  # no reward for being stationary
 
         done = events.get("crash") or events.get("quit")
         # Store transition
